@@ -12,6 +12,7 @@ import MathSolutionPlayer, { SolutionStep } from './MathSolutionPlayer';
 import SkeletonSolution from './SkeletonSolution';
 import SolutionStepCard from './SolutionStepCard';
 import PrerequisiteGate from './PrerequisiteGate';
+import { mathToSpeech } from '../utils/mathToSpeech';
 
 export default function SolverMode() {
   const [image, setImage] = useState<string | null>(null);
@@ -115,13 +116,7 @@ export default function SolverMode() {
 
   const parseStepsForPlayer = (steps: string[]): SolutionStep[] => {
     return steps.map((step, index) => {
-      // For TTS, we strip markdown formatting but keep the text exactly as it is
-      const cleanExplanation = step
-        .replace(/\*\*/g, '')
-        .replace(/\*/g, '')
-        .replace(/`/g, '')
-        .replace(/\$\$/g, '') // Remove block math delimiters for speech
-        .replace(/\$/g, '');  // Remove inline math delimiters for speech
+      const cleanExplanation = mathToSpeech(step);
 
       return {
         id: `step-${index}`,

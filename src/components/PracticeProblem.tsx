@@ -6,6 +6,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { GamificationService } from '../services/GamificationService';
 import MathSolutionPlayer, { SolutionStep } from './MathSolutionPlayer';
+import { mathToSpeech } from '../utils/mathToSpeech';
 
 export default function PracticeProblem({ problem }: { problem: string }) {
   const [userAnswer, setUserAnswer] = useState('');
@@ -28,13 +29,7 @@ export default function PracticeProblem({ problem }: { problem: string }) {
 
   const parseStepsForPlayer = (steps: string[]): SolutionStep[] => {
     return steps.map((step, index) => {
-      // For TTS, we strip markdown formatting but keep the text exactly as it is
-      const cleanExplanation = step
-        .replace(/\*\*/g, '')
-        .replace(/\*/g, '')
-        .replace(/`/g, '')
-        .replace(/\$\$/g, '') // Remove block math delimiters for speech
-        .replace(/\$/g, '');  // Remove inline math delimiters for speech
+      const cleanExplanation = mathToSpeech(step);
 
       return {
         id: `step-${index}`,
