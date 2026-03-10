@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { MathSolver, MathSolution } from '../services/MathSolver';
+import { GeminiMathSolver, MathSolution } from '../services/GeminiMathSolver';
 import { CacheService } from '../services/CacheService';
 
 export function useMathStream() {
@@ -24,7 +24,7 @@ export function useMathStream() {
         return cachedSolution;
       }
 
-      const finalSolution = await MathSolver.fetchStreamedSolution(
+      const finalSolution = await GeminiMathSolver.fetchStreamedSolution(
         prompt,
         (partial) => {
           setPartialSolution(partial);

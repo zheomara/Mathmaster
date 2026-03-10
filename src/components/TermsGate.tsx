@@ -78,7 +78,7 @@ export default function TermsGate({ children }: { children: React.ReactNode }) {
             <div>
               <h3 className="font-semibold text-gray-900">How We Process Your Photos</h3>
               <p className="text-sm text-gray-600 mt-1 leading-relaxed">
-                The math problems you snap are sent securely to our third-party AI partner (Puter) to be solved. No humans review your photos.
+                The math problems you snap are sent securely to our third-party AI partners (Google Gemini/Puter) to be solved. No humans review your photos.
               </p>
             </div>
           </div>
@@ -125,7 +125,7 @@ export default function TermsGate({ children }: { children: React.ReactNode }) {
               </div>
               <div>
                 <strong className="text-gray-900 block mb-1">3. Data Collection & OCR Processing</strong>
-                When you upload an image of a math problem, we use Optical Character Recognition (OCR) and AI to read and solve it. Your images and text prompts are securely transmitted to our third-party AI infrastructure provider (Puter). No human beings manually review, read, or grade the photos you upload.
+                When you upload an image of a math problem, we use Optical Character Recognition (OCR) and AI to read and solve it. Your images and text prompts are securely transmitted to our third-party AI infrastructure providers (Google Gemini and Puter). No human beings manually review, read, or grade the photos you upload.
               </div>
             </div>
           )}

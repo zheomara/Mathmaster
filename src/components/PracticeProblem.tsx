@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Loader2, PlayCircle } from 'lucide-react';
-import { MathSolver, PracticeEvaluation } from '../services/MathSolver';
+import { GeminiMathSolver, PracticeEvaluation } from '../services/GeminiMathSolver';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -21,7 +21,7 @@ export default function PracticeProblem({ problem }: { problem: string }) {
   const handleSubmit = async () => {
     if (!userAnswer.trim()) return;
     setIsEvaluating(true);
-    const result = await MathSolver.evaluatePracticeProblem(problem, userAnswer);
+    const result = await GeminiMathSolver.evaluatePracticeProblem(problem, userAnswer);
     setEvaluation(result);
     if (result.isCorrect) {
       const { newBadges: earnedBadges } = GamificationService.recordProblemSolved();
