@@ -6,9 +6,14 @@ export default function PracticeMode() {
   const [problems, setProblems] = useState<string[]>([]);
 
   useEffect(() => {
-    const pool = JSON.parse(localStorage.getItem('practice_pool') || '[]');
-    // Take the most recent 10 problems
-    setProblems(pool.slice(0, 10));
+    try {
+      const pool = JSON.parse(localStorage.getItem('practice_pool') || '[]');
+      // Take the most recent 10 problems
+      setProblems(pool.slice(0, 10));
+    } catch (e) {
+      console.error('Failed to load practice pool:', e);
+      setProblems([]);
+    }
   }, []);
 
   return (

@@ -6,18 +6,25 @@ export default function TermsGate({ children }: { children: React.ReactNode }) {
   const [showFullTerms, setShowFullTerms] = useState(false);
 
   useEffect(() => {
-    // Equivalent to AsyncStorage.getItem('has_accepted_terms') in React Native
-    const accepted = localStorage.getItem('has_accepted_terms');
-    if (accepted === 'true') {
-      setHasAccepted(true);
-    } else {
+    try {
+      const accepted = localStorage.getItem('has_accepted_terms');
+      if (accepted === 'true') {
+        setHasAccepted(true);
+      } else {
+        setHasAccepted(false);
+      }
+    } catch (e) {
+      console.error('localStorage error in TermsGate:', e);
       setHasAccepted(false);
     }
   }, []);
 
   const handleAccept = () => {
-    // Equivalent to AsyncStorage.setItem('has_accepted_terms', 'true')
-    localStorage.setItem('has_accepted_terms', 'true');
+    try {
+      localStorage.setItem('has_accepted_terms', 'true');
+    } catch (e) {
+      console.error('Failed to save terms acceptance:', e);
+    }
     setHasAccepted(true);
   };
 

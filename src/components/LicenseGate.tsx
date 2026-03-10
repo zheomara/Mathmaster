@@ -113,24 +113,39 @@ export default function LicenseGate({ children }: { children: React.ReactNode })
   const [copiedCode, setCopiedCode] = useState(false);
 
   useEffect(() => {
-    // Mock react-native-device-info for Web environment
-    let id = localStorage.getItem('device_id');
-    if (!id) {
-      id = crypto.randomUUID().toUpperCase().split('-')[0] + '-' + crypto.randomUUID().toUpperCase().split('-')[1];
-      localStorage.setItem('device_id', id);
+    let id = '';
+    try {
+      id = localStorage.getItem('device_id') || '';
+      if (!id) {
+        try {
+          id = crypto.randomUUID().toUpperCase().split('-')[0] + '-' + crypto.randomUUID().toUpperCase().split('-')[1];
+        } catch (e) {
+          const randomHex = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1).toUpperCase();
+          id = randomHex() + randomHex() + '-' + randomHex() + randomHex();
+        }
+        localStorage.setItem('device_id', id);
+      }
+    } catch (e) {
+      // Fallback if localStorage is disabled
+      const randomHex = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1).toUpperCase();
+      id = randomHex() + randomHex() + '-' + randomHex() + randomHex();
     }
     setDeviceId(id);
     
     const checkExistingLicense = async () => {
-      const savedLicense = localStorage.getItem('app_license_key');
-      if (savedLicense) {
-        const isValid = await verifyLicense(savedLicense, id!);
-        if (isValid) {
-          setIsUnlocked(true);
-          return;
-        } else {
-          localStorage.removeItem('app_license_key');
+      try {
+        const savedLicense = localStorage.getItem('app_license_key');
+        if (savedLicense) {
+          const isValid = await verifyLicense(savedLicense, id);
+          if (isValid) {
+            setIsUnlocked(true);
+            return;
+          } else {
+            localStorage.removeItem('app_license_key');
+          }
         }
+      } catch (e) {
+        console.error('localStorage error:', e);
       }
       setIsUnlocked(false);
     };
@@ -154,7 +169,11 @@ export default function LicenseGate({ children }: { children: React.ReactNode })
     // Verify as normal license
     const isValid = await verifyLicense(licenseInput.trim(), deviceId);
     if (isValid) {
-      localStorage.setItem('app_license_key', licenseInput.trim());
+      try {
+        localStorage.setItem('app_license_key', licenseInput.trim());
+      } catch (e) {
+        console.error('Failed to save license key:', e);
+      }
       setIsUnlocked(true);
     } else {
       setClientError('Invalid or expired license key.');

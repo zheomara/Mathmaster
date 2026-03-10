@@ -1,8 +1,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { parse as parsePartialJson } from "best-effort-json-parser";
 
-// Initialize the Gemini API client
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Lazily initialize the Gemini API client
+let ai: GoogleGenAI | null = null;
+
+function getGeminiClient(): GoogleGenAI {
+  if (!ai) {
+    const apiKey = process.env.GEMINI_API_KEY || '';
+    ai = new GoogleGenAI({ apiKey });
+  }
+  return ai;
+}
 
 declare const puter: any;
 
@@ -57,7 +65,10 @@ function isRateLimitOrUnavailable(error: any): boolean {
     msg.includes('503') ||
     msg.includes('Rate Limit Exceeded') ||
     msg.includes('RESOURCE_EXHAUSTED') ||
-    msg.includes('Service Unavailable')
+    msg.includes('Service Unavailable') ||
+    msg.includes('API key') ||
+    msg.includes('api_key') ||
+    msg.includes('API_KEY')
   );
 }
 
@@ -81,7 +92,7 @@ export class GeminiMathSolver {
       }
       parts.push({ text: `${systemPrompt}\n\nProblem: ${userPrompt}` });
 
-      const response = await ai.models.generateContent({
+      const response = await getGeminiClient().models.generateContent({
         model: "gemini-3.1-pro-preview",
         contents: { parts },
         config: {
@@ -165,7 +176,7 @@ export class GeminiMathSolver {
       }
       parts.push({ text: `${systemPrompt}\n\nProblem: ${userPrompt}` });
 
-      const responseStream = await ai.models.generateContentStream({
+      const responseStream = await getGeminiClient().models.generateContentStream({
         model: "gemini-3.1-pro-preview",
         contents: { parts },
         config: {
@@ -227,7 +238,7 @@ export class GeminiMathSolver {
       }
       parts.push({ text: `${systemPrompt}\n\nProblem: ${userPrompt}` });
 
-      const response = await ai.models.generateContent({
+      const response = await getGeminiClient().models.generateContent({
         model: "gemini-3.1-pro-preview",
         contents: { parts },
         config: {
@@ -270,7 +281,7 @@ export class GeminiMathSolver {
     const systemPrompt = `You are an expert math tutor. A student needs to understand the concept of "${concept}" before they can solve the problem: "${problemText}". Provide a very short, focused micro-lesson (max 2 paragraphs) explaining this concept simply to a 5th grader. Use LaTeX for math, wrapping inline math in single $ and block math in double $$. Also, find a highly relevant educational YouTube video ID for this concept (e.g., from Khan Academy, Math Antics, etc.). Return a JSON object with "lesson" and "youtubeVideoId" (if found, else empty string).`;
     
     try {
-      const response = await ai.models.generateContent({
+      const response = await getGeminiClient().models.generateContent({
         model: "gemini-3.1-pro-preview",
         contents: systemPrompt,
         config: {
@@ -344,7 +355,7 @@ export class GeminiMathSolver {
               Third, provide a detailed, step-by-step solution to the problem using simple English suitable for a 5th grader.
               Use LaTeX for all math expressions, wrapping inline math in single $ and block math in double $$.`;
     try {
-      const response = await ai.models.generateContent({
+      const response = await getGeminiClient().models.generateContent({
         model: "gemini-3.1-pro-preview",
         contents: {
           parts: [

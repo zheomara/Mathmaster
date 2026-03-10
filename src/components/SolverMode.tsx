@@ -29,9 +29,13 @@ export default function SolverMode() {
 
   const savePracticeProblems = (problems: string[]) => {
     if (!problems || problems.length === 0) return;
-    const existing = JSON.parse(localStorage.getItem('practice_pool') || '[]');
-    const updated = Array.from(new Set([...problems, ...existing]));
-    localStorage.setItem('practice_pool', JSON.stringify(updated));
+    try {
+      const existing = JSON.parse(localStorage.getItem('practice_pool') || '[]');
+      const updated = Array.from(new Set([...problems, ...existing]));
+      localStorage.setItem('practice_pool', JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Failed to save practice problems:', e);
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

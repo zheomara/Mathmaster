@@ -8,20 +8,24 @@ async function hashString(str: string): Promise<string> {
 
 export const CacheService = {
   async get(key: string): Promise<any | null> {
-    const hashedKey = await hashString(key);
-    const cached = localStorage.getItem(`math_cache_${hashedKey}`);
-    if (cached) {
-      try {
+    try {
+      const hashedKey = await hashString(key);
+      const cached = localStorage.getItem(`math_cache_${hashedKey}`);
+      if (cached) {
         return JSON.parse(cached);
-      } catch (e) {
-        return null;
       }
+    } catch (e) {
+      console.warn('Cache get error:', e);
     }
     return null;
   },
   
   async set(key: string, value: any): Promise<void> {
-    const hashedKey = await hashString(key);
-    localStorage.setItem(`math_cache_${hashedKey}`, JSON.stringify(value));
+    try {
+      const hashedKey = await hashString(key);
+      localStorage.setItem(`math_cache_${hashedKey}`, JSON.stringify(value));
+    } catch (e) {
+      console.warn('Cache set error:', e);
+    }
   }
 };
