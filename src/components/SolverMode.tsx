@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Loader2, Calculator, Send, BookOpen, PenTool, PlayCircle } from 'lucide-react';
+import { Camera as LucideCamera, Loader2, Calculator, Send, BookOpen, PenTool, PlayCircle } from 'lucide-react';
 import { MathSolution, GeminiMathSolver } from '../services/GeminiMathSolver';
 import { GamificationService } from '../services/GamificationService';
 import { useMathStream } from '../hooks/useMathStream';
@@ -15,6 +15,8 @@ import SolutionStepCard from './SolutionStepCard';
 import PrerequisiteGate from './PrerequisiteGate';
 import { mathToSpeech } from '../utils/mathToSpeech';
 import { fixMathDelimiters } from '../utils/mathUtils';
+import { Capacitor } from '@capacitor/core';
+import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 const MathSolutionPlayer = React.lazy(() => import('./MathSolutionPlayer'));
 
@@ -25,6 +27,34 @@ export default function SolverMode() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { isStreaming, partialSolution: solution, error, startStream } = useMathStream();
+
+  const takePhoto = async () => {
+    try {
+      const photo = await CapCamera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Prompt
+      });
+
+      if (photo.base64String) {
+        const imageUrl = `data:image/${photo.format};base64,${photo.base64String}`;
+        setImage(imageUrl);
+        setTextInput('');
+        await processImage(photo.base64String, `image/${photo.format}`);
+      }
+    } catch (error) {
+      console.error('Camera error:', error);
+    }
+  };
+
+  const handleScanClick = () => {
+    if (Capacitor.isNativePlatform()) {
+      takePhoto();
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
 
   // Prerequisite Gate State
   const [gateStatus, setGateStatus] = useState<'idle' | 'analyzing' | 'gate' | 'teaching' | 'solving'>('idle');
@@ -175,14 +205,14 @@ export default function SolverMode() {
 
         <div 
           className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors mb-4"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={handleScanClick}
         >
           {image ? (
             <img src={image} alt="Equation" className="h-32 w-full object-contain rounded-lg" />
           ) : (
             <>
               <div className="bg-indigo-50 p-3 rounded-full mb-3">
-                <Camera className="w-6 h-6 text-indigo-500" />
+                <LucideCamera className="w-6 h-6 text-indigo-500" />
               </div>
               <span className="font-medium text-gray-700 text-sm">Tap to Scan Equation</span>
             </>

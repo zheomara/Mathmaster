@@ -1,5 +1,5 @@
 {
   "name": "Mathmaster",
   "description": "A simple mobile-friendly web app to generate Ed25519 signed license codes.",
-  "requestFramePermissions": []
+  "requestFramePermissions": ["camera"]
 }
