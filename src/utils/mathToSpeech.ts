@@ -7,7 +7,10 @@ export function mathToSpeech(text: string): string {
       .replace(/\\frac{([^}]+)}{([^}]+)}/g, '$1 over $2')
       .replace(/\\sqrt{([^}]+)}/g, 'square root of $1')
       .replace(/\\div/g, ' divided by ')
-      .replace(/\\times/g, ' times ')
+      .replace(/÷/g, ' divided by ')
+      .replace(/\//g, ' divided by ')
+      .replace(/\\times/g, ' multiply by ')
+      .replace(/×/g, ' multiply by ')
       .replace(/\\cdot/g, ' times ')
       .replace(/\\pi/g, ' pi ')
       .replace(/\\approx/g, ' is approximately equal to ')
@@ -50,11 +53,14 @@ export function mathToSpeech(text: string): string {
     return processMath(math);
   });
 
-  // Clean up markdown formatting
+  // Clean up markdown formatting and apply general symbol rules
   processedText = processedText
     .replace(/\*\*/g, '')
     .replace(/\*/g, '')
-    .replace(/`/g, '');
+    .replace(/`/g, '')
+    .replace(/\//g, ' divided by ')
+    .replace(/÷/g, ' divided by ')
+    .replace(/×/g, ' multiply by ');
 
   return processedText.trim();
 }
