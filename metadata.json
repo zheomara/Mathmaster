@@ -1,0 +1,5 @@
+{
+  "name": "License Generator",
+  "description": "A simple mobile-friendly web app to generate Ed25519 signed license codes.",
+  "requestFramePermissions": []
+}
