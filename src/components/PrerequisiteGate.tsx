@@ -14,13 +14,23 @@ export default function PrerequisiteGate({ prerequisites, onComplete }: Prerequi
   useEffect(() => {
     const known = KnowledgeService.getKnownConcepts();
     const initialSelections: Record<string, boolean> = {};
+    let allKnown = true;
+    
     prerequisites.forEach(p => {
       if (known.includes(p)) {
         initialSelections[p] = true;
+      } else {
+        allKnown = false;
       }
     });
+    
+    if (allKnown && prerequisites.length > 0) {
+      onComplete([]);
+      return;
+    }
+    
     setSelections(initialSelections);
-  }, [prerequisites]);
+  }, [prerequisites, onComplete]);
 
   const handleSelect = (concept: string, knowsIt: boolean) => {
     setSelections(prev => ({ ...prev, [concept]: knowsIt }));

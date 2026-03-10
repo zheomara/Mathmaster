@@ -93,7 +93,7 @@ export class GeminiMathSolver {
       parts.push({ text: `${systemPrompt}\n\nProblem: ${userPrompt}` });
 
       const response = await getGeminiClient().models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         contents: { parts },
         config: {
           responseMimeType: "application/json",
@@ -178,7 +178,7 @@ export class GeminiMathSolver {
       parts.push({ text: `${systemPrompt}\n\nProblem: ${userPrompt}` });
 
       const responseStream = await getGeminiClient().models.generateContentStream({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         contents: { parts },
         config: {
           responseMimeType: "application/json",
@@ -207,17 +207,25 @@ export class GeminiMathSolver {
       });
 
       let fullText = "";
+      let lastUpdateTime = 0;
+      const THROTTLE_MS = 60; // ~16fps update rate for streaming
+
       for await (const chunk of responseStream) {
         fullText += chunk.text;
-        try {
-          const partialData = parsePartialJson(fullText);
-          onChunk({
-            assumedKnowledge: Array.isArray(partialData?.assumedKnowledge) ? partialData.assumedKnowledge : [],
-            steps: Array.isArray(partialData?.steps) ? partialData.steps : [],
-            practiceProblems: Array.isArray(partialData?.practiceProblems) ? partialData.practiceProblems : []
-          });
-        } catch (e) {
-          // Ignore parsing errors for intermediate chunks
+        
+        const now = Date.now();
+        if (now - lastUpdateTime > THROTTLE_MS) {
+          try {
+            const partialData = parsePartialJson(fullText);
+            onChunk({
+              assumedKnowledge: Array.isArray(partialData?.assumedKnowledge) ? partialData.assumedKnowledge : [],
+              steps: Array.isArray(partialData?.steps) ? partialData.steps : [],
+              practiceProblems: Array.isArray(partialData?.practiceProblems) ? partialData.practiceProblems : []
+            });
+            lastUpdateTime = now;
+          } catch (e) {
+            // Ignore parsing errors for intermediate chunks
+          }
         }
       }
 
@@ -240,7 +248,7 @@ export class GeminiMathSolver {
       parts.push({ text: `${systemPrompt}\n\nProblem: ${userPrompt}` });
 
       const response = await getGeminiClient().models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         contents: { parts },
         config: {
           responseMimeType: "application/json",
@@ -288,7 +296,7 @@ export class GeminiMathSolver {
     
     try {
       const response = await getGeminiClient().models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         contents: systemPrompt,
         config: {
           responseMimeType: "application/json",
@@ -362,7 +370,7 @@ export class GeminiMathSolver {
               Use LaTeX for all math expressions, wrapping inline math in single $ and block math in double $$.`;
     try {
       const response = await getGeminiClient().models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         contents: {
           parts: [
             {

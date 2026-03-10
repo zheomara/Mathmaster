@@ -12,6 +12,8 @@ import type { SolutionStep } from './MathSolutionPlayer';
 import SkeletonSolution from './SkeletonSolution';
 import SolutionStepCard from './SolutionStepCard';
 import PrerequisiteGate from './PrerequisiteGate';
+import LicenseLock from './LicenseLock';
+import { LicenseService } from '../services/LicenseService';
 import { mathToSpeech } from '../utils/mathToSpeech';
 import { fixMathDelimiters } from '../utils/mathUtils';
 
@@ -30,6 +32,7 @@ export default function SolverMode() {
   const [prerequisites, setPrerequisites] = useState<string[]>([]);
   const [microLessons, setMicroLessons] = useState<{concept: string, lesson: string, youtubeVideoId?: string}[]>([]);
   const [currentProblem, setCurrentProblem] = useState<{text: string, base64?: string, mimeType?: string} | null>(null);
+  const [isLocked, setIsLocked] = useState(!LicenseService.hasRemainingTrial());
 
   const savePracticeProblems = (problems: string[]) => {
     if (!problems || problems.length === 0) return;
@@ -43,6 +46,7 @@ export default function SolverMode() {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isLocked) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -67,28 +71,53 @@ export default function SolverMode() {
     setGateStatus('analyzing');
     setMicroLessons([]);
     
+    // Start solving in background to reduce perceived latency
+    const solverPromise = startStream(text, base64Data, mimeType);
+    
     const prereqs = await GeminiMathSolver.analyzePrerequisites(text, base64Data, mimeType);
     if (prereqs.length > 0) {
       setPrerequisites(prereqs);
       setGateStatus('gate');
     } else {
-      startSolving(text, base64Data, mimeType);
+      setGateStatus('solving');
+      const result = await solverPromise;
+      if (result && result.practiceProblems) {
+        savePracticeProblems(result.practiceProblems);
+        LicenseService.incrementUsage();
+        if (!LicenseService.hasRemainingTrial()) {
+          setIsLocked(true);
+        }
+      }
+      setGateStatus('idle');
     }
   };
 
   const handleTextSubmit = async () => {
+    if (isLocked) return;
     if (!textInput.trim()) return;
     setImage(null);
     setCurrentProblem({ text: textInput });
     setGateStatus('analyzing');
     setMicroLessons([]);
     
+    // Start solving in background
+    const solverPromise = startStream(textInput);
+    
     const prereqs = await GeminiMathSolver.analyzePrerequisites(textInput);
     if (prereqs.length > 0) {
       setPrerequisites(prereqs);
       setGateStatus('gate');
     } else {
-      startSolving(textInput);
+      setGateStatus('solving');
+      const result = await solverPromise;
+      if (result && result.practiceProblems) {
+        savePracticeProblems(result.practiceProblems);
+        LicenseService.incrementUsage();
+        if (!LicenseService.hasRemainingTrial()) {
+          setIsLocked(true);
+        }
+      }
+      setGateStatus('idle');
     }
   };
 
@@ -113,6 +142,10 @@ export default function SolverMode() {
     const result = await startStream(text, base64, mimeType);
     if (result && result.practiceProblems) {
       savePracticeProblems(result.practiceProblems);
+      LicenseService.incrementUsage();
+      if (!LicenseService.hasRemainingTrial()) {
+        setIsLocked(true);
+      }
     }
     setGateStatus('idle');
   };
@@ -131,6 +164,12 @@ export default function SolverMode() {
 
   return (
     <div className="flex flex-col items-center p-6 w-full max-w-md mx-auto">
+      {isLocked && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-gray-900/40 backdrop-blur-sm">
+          <LicenseLock onUnlocked={() => setIsLocked(false)} />
+        </div>
+      )}
+
       {showPlayer && solution && solution.steps && (
         <React.Suspense fallback={<div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"><Loader2 className="w-8 h-8 text-indigo-500 animate-spin" /></div>}>
           <MathSolutionPlayer 
