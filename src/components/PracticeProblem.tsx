@@ -82,7 +82,11 @@ export default function PracticeProblem({ problem }: { problem: string }) {
       {evaluation && (
         <div className="mt-4 space-y-4">
           <div className={`p-3 rounded-lg border ${evaluation.isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-            <p className="font-medium">{evaluation.feedback}</p>
+            <div className="font-medium">
+              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                {fixMathDelimiters(evaluation.feedback)}
+              </ReactMarkdown>
+            </div>
           </div>
           
           {newBadges.length > 0 && (
