@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Camera as LucideCamera, Loader2, Calculator, Send, BookOpen, PenTool, PlayCircle, Pi } from 'lucide-react';
-import { MathSolution, GeminiMathSolver } from '../services/GeminiMathSolver';
+import { MathSolution, MathSolver } from '../services/MathSolver';
 import { GamificationService } from '../services/GamificationService';
 import { useMathStream } from '../hooks/useMathStream';
 import { motion } from 'motion/react';
@@ -101,7 +101,7 @@ export default function SolverMode() {
     // Start solving in background to reduce perceived latency
     const solverPromise = startStream(text, base64Data, mimeType);
     
-    const prereqs = await GeminiMathSolver.analyzePrerequisites(text, base64Data, mimeType);
+    const prereqs = await MathSolver.analyzePrerequisites(text, base64Data, mimeType);
     if (prereqs.length > 0) {
       setPrerequisites(prereqs);
       setGateStatus('gate');
@@ -127,7 +127,7 @@ export default function SolverMode() {
     // Start solving in background
     const solverPromise = startStream(textInput);
     
-    const prereqs = await GeminiMathSolver.analyzePrerequisites(textInput);
+    const prereqs = await MathSolver.analyzePrerequisites(textInput);
     if (prereqs.length > 0) {
       setPrerequisites(prereqs);
       setGateStatus('gate');
@@ -148,7 +148,7 @@ export default function SolverMode() {
       setGateStatus('teaching');
       const lessons = await Promise.all(
         needsTeaching.map(async (concept) => {
-          const { lesson, youtubeVideoId } = await GeminiMathSolver.generateMicroLesson(concept, currentProblem!.text);
+          const { lesson, youtubeVideoId } = await MathSolver.generateMicroLesson(concept, currentProblem!.text);
           return { concept, lesson, youtubeVideoId };
         })
       );
