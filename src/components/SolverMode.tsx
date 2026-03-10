@@ -150,7 +150,7 @@ export default function SolverMode() {
           onClick={() => fileInputRef.current?.click()}
         >
           {image ? (
-            <img src={image} alt="Equation" className="max-h-32 object-contain rounded-lg" />
+            <img src={image} alt="Equation" className="h-32 w-full object-contain rounded-lg" />
           ) : (
             <>
               <div className="bg-indigo-50 p-3 rounded-full mb-3">
@@ -229,7 +229,7 @@ export default function SolverMode() {
       {microLessons.length > 0 && (solution || isStreaming) && (
         <div className="w-full space-y-4 mb-6">
           {microLessons.map((ml, idx) => (
-            <motion.div key={idx} initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} className="bg-blue-50 rounded-2xl p-6 border border-blue-100 shadow-sm">
+            <motion.div key={idx} initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} style={{ willChange: 'transform, opacity' }} className="bg-blue-50 rounded-2xl p-6 border border-blue-100 shadow-sm">
               <h3 className="font-bold text-blue-900 mb-4 flex items-center">
                 <BookOpen className="w-5 h-5 mr-2"/> 
                 Micro-Lesson: {ml.concept}
@@ -262,6 +262,7 @@ export default function SolverMode() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          style={{ willChange: 'transform, opacity' }}
           className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
         >
           {solution.assumedKnowledge && solution.assumedKnowledge.length > 0 && (

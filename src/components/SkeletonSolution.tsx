@@ -7,6 +7,7 @@ export default function SkeletonSolution() {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
+      style={{ willChange: 'transform, opacity' }}
       className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
     >
       {/* Assumed Knowledge Skeleton */}

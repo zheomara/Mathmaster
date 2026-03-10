@@ -105,6 +105,7 @@ export default function MathSolutionPlayer({ steps, onClose }: MathSolutionPlaye
                   scale: isCurrent ? 1.02 : 1
                 }}
                 transition={{ duration: 0.5 }}
+                style={{ willChange: 'transform, opacity' }}
                 className={`p-6 rounded-2xl border transition-colors duration-500 ${
                   isCurrent ? 'border-indigo-500/50 bg-indigo-500/10 shadow-[0_0_30px_rgba(99,102,241,0.15)]' : 'border-white/5 bg-white/5'
                 }`}
@@ -132,9 +133,10 @@ export default function MathSolutionPlayer({ steps, onClose }: MathSolutionPlaye
             onClick={handleScrub}
           >
             <motion.div 
-              className="absolute top-0 left-0 bottom-0 bg-indigo-500"
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPercentage}%` }}
+              className="absolute top-0 left-0 bottom-0 bg-indigo-500 w-full"
+              style={{ transformOrigin: 'left', willChange: 'transform' }}
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: progressPercentage / 100 }}
               transition={{ duration: 0.3 }}
             />
             {/* Hover indicator for scrubbing */}

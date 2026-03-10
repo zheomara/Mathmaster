@@ -17,6 +17,7 @@ const SolutionStepCard = memo(({ step, index }: SolutionStepCardProps) => {
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3 }}
+      style={{ willChange: 'transform, opacity' }}
       className="flex items-start space-x-3 bg-gray-50 p-4 rounded-xl border border-gray-100"
     >
       <div className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5">

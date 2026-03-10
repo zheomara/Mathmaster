@@ -38,6 +38,7 @@ export default function PrerequisiteGate({ prerequisites, onComplete }: Prerequi
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
+      style={{ willChange: 'transform, opacity' }}
       className="w-full bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-hidden mb-6"
     >
       <div className="bg-indigo-600 p-4 text-white flex items-center space-x-2">
