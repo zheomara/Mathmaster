@@ -13,6 +13,7 @@ import SkeletonSolution from './SkeletonSolution';
 import SolutionStepCard from './SolutionStepCard';
 import PrerequisiteGate from './PrerequisiteGate';
 import { mathToSpeech } from '../utils/mathToSpeech';
+import { fixMathDelimiters } from '../utils/mathUtils';
 
 const MathSolutionPlayer = React.lazy(() => import('./MathSolutionPlayer'));
 
@@ -236,7 +237,7 @@ export default function SolverMode() {
               </h3>
               <div className="text-blue-800 text-sm leading-relaxed space-y-4">
                 <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                  {ml.lesson}
+                  {fixMathDelimiters(ml.lesson)}
                 </ReactMarkdown>
                 
                 {ml.youtubeVideoId && (
@@ -279,7 +280,7 @@ export default function SolverMode() {
                         remarkPlugins={[remarkMath]} 
                         rehypePlugins={[rehypeKatex]}
                       >
-                        {item}
+                        {fixMathDelimiters(item)}
                       </ReactMarkdown>
                     </li>
                   ))}

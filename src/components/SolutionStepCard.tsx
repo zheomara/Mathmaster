@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { fixMathDelimiters } from '../utils/mathUtils';
 
 interface SolutionStepCardProps {
   step: string;
@@ -28,7 +29,7 @@ const SolutionStepCard = memo(({ step, index }: SolutionStepCardProps) => {
           remarkPlugins={[remarkMath]} 
           rehypePlugins={[rehypeKatex]}
         >
-          {step}
+          {fixMathDelimiters(step)}
         </ReactMarkdown>
       </div>
     </motion.div>

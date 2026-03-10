@@ -7,6 +7,7 @@ import rehypeKatex from 'rehype-katex';
 import { GamificationService } from '../services/GamificationService';
 import type { SolutionStep } from './MathSolutionPlayer';
 import { mathToSpeech } from '../utils/mathToSpeech';
+import { fixMathDelimiters } from '../utils/mathUtils';
 
 const MathSolutionPlayer = React.lazy(() => import('./MathSolutionPlayer'));
 
@@ -54,7 +55,7 @@ export default function PracticeProblem({ problem }: { problem: string }) {
 
       <div className="overflow-x-auto mb-3">
         <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-          {problem}
+          {fixMathDelimiters(problem)}
         </ReactMarkdown>
       </div>
       
@@ -113,7 +114,7 @@ export default function PracticeProblem({ problem }: { problem: string }) {
                   </div>
                   <div className="text-gray-700 leading-relaxed overflow-x-auto w-full text-sm">
                     <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                      {step}
+                      {fixMathDelimiters(step)}
                     </ReactMarkdown>
                   </div>
                 </div>

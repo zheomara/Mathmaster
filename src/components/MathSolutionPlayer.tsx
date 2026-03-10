@@ -5,6 +5,7 @@ import 'katex/dist/katex.min.css';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { fixMathDelimiters } from '../utils/mathUtils';
 
 export interface SolutionStep {
   id: string;
@@ -115,7 +116,7 @@ export default function MathSolutionPlayer({ steps, onClose }: MathSolutionPlaye
                     remarkPlugins={[remarkMath]} 
                     rehypePlugins={[rehypeKatex]}
                   >
-                    {step.rawText}
+                    {fixMathDelimiters(step.rawText)}
                   </ReactMarkdown>
                 </div>
               </motion.div>
