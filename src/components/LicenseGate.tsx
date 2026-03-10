@@ -144,6 +144,21 @@ export default function LicenseGate({ children }: { children: React.ReactNode })
             localStorage.removeItem('app_license_key');
           }
         }
+
+        // Trial Period Check: Allow 2 problems before locking
+        const statsStr = localStorage.getItem('mathmaster_stats');
+        if (statsStr) {
+          const stats = JSON.parse(statsStr);
+          if (stats.problemsSolved < 2) {
+            setIsUnlocked(true);
+            return;
+          }
+        } else {
+          // No stats yet means 0 problems solved
+          setIsUnlocked(true);
+          return;
+        }
+
       } catch (e) {
         console.error('localStorage error:', e);
       }
@@ -151,6 +166,19 @@ export default function LicenseGate({ children }: { children: React.ReactNode })
     };
     
     checkExistingLicense();
+
+    // Listen for storage changes to update lock status (e.g. when a problem is solved)
+    const handleStorageChange = () => {
+      checkExistingLicense();
+    };
+    window.addEventListener('storage', handleStorageChange);
+    // Custom event for same-window updates
+    window.addEventListener('license_check', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('license_check', handleStorageChange);
+    };
   }, []);
 
   const handleUnlock = async () => {

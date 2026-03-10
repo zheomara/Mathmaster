@@ -26,6 +26,8 @@ export default function PracticeProblem({ problem }: { problem: string }) {
     if (result.isCorrect) {
       const { newBadges: earnedBadges } = GamificationService.recordProblemSolved();
       setNewBadges(earnedBadges);
+      // Trigger license check in case trial limit reached
+      window.dispatchEvent(new Event('license_check'));
     }
     setIsEvaluating(false);
   };

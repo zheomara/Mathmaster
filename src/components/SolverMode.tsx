@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Loader2, Calculator, Send, BookOpen, PenTool, PlayCircle } from 'lucide-react';
 import { MathSolution, GeminiMathSolver } from '../services/GeminiMathSolver';
+import { GamificationService } from '../services/GamificationService';
 import { useMathStream } from '../hooks/useMathStream';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -12,8 +13,6 @@ import type { SolutionStep } from './MathSolutionPlayer';
 import SkeletonSolution from './SkeletonSolution';
 import SolutionStepCard from './SolutionStepCard';
 import PrerequisiteGate from './PrerequisiteGate';
-import LicenseLock from './LicenseLock';
-import { LicenseService } from '../services/LicenseService';
 import { mathToSpeech } from '../utils/mathToSpeech';
 import { fixMathDelimiters } from '../utils/mathUtils';
 
@@ -32,7 +31,6 @@ export default function SolverMode() {
   const [prerequisites, setPrerequisites] = useState<string[]>([]);
   const [microLessons, setMicroLessons] = useState<{concept: string, lesson: string, youtubeVideoId?: string}[]>([]);
   const [currentProblem, setCurrentProblem] = useState<{text: string, base64?: string, mimeType?: string} | null>(null);
-  const [isLocked, setIsLocked] = useState(!LicenseService.hasRemainingTrial());
 
   const savePracticeProblems = (problems: string[]) => {
     if (!problems || problems.length === 0) return;
@@ -46,7 +44,6 @@ export default function SolverMode() {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (isLocked) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -83,17 +80,14 @@ export default function SolverMode() {
       const result = await solverPromise;
       if (result && result.practiceProblems) {
         savePracticeProblems(result.practiceProblems);
-        LicenseService.incrementUsage();
-        if (!LicenseService.hasRemainingTrial()) {
-          setIsLocked(true);
-        }
       }
+      GamificationService.recordProblemSolved();
+      window.dispatchEvent(new Event('license_check'));
       setGateStatus('idle');
     }
   };
 
   const handleTextSubmit = async () => {
-    if (isLocked) return;
     if (!textInput.trim()) return;
     setImage(null);
     setCurrentProblem({ text: textInput });
@@ -112,11 +106,9 @@ export default function SolverMode() {
       const result = await solverPromise;
       if (result && result.practiceProblems) {
         savePracticeProblems(result.practiceProblems);
-        LicenseService.incrementUsage();
-        if (!LicenseService.hasRemainingTrial()) {
-          setIsLocked(true);
-        }
       }
+      GamificationService.recordProblemSolved();
+      window.dispatchEvent(new Event('license_check'));
       setGateStatus('idle');
     }
   };
@@ -142,11 +134,13 @@ export default function SolverMode() {
     const result = await startStream(text, base64, mimeType);
     if (result && result.practiceProblems) {
       savePracticeProblems(result.practiceProblems);
-      LicenseService.incrementUsage();
-      if (!LicenseService.hasRemainingTrial()) {
-        setIsLocked(true);
-      }
     }
+    
+    // Record problem solved for gamification and trial limit
+    GamificationService.recordProblemSolved();
+    // Trigger license check in case trial limit reached
+    window.dispatchEvent(new Event('license_check'));
+    
     setGateStatus('idle');
   };
 
@@ -164,12 +158,6 @@ export default function SolverMode() {
 
   return (
     <div className="flex flex-col items-center p-6 w-full max-w-md mx-auto">
-      {isLocked && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-gray-900/40 backdrop-blur-sm">
-          <LicenseLock onUnlocked={() => setIsLocked(false)} />
-        </div>
-      )}
-
       {showPlayer && solution && solution.steps && (
         <React.Suspense fallback={<div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"><Loader2 className="w-8 h-8 text-indigo-500 animate-spin" /></div>}>
           <MathSolutionPlayer 
