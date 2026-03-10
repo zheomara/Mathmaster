@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Trophy, Flame, Target, Award, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Calculator, Flame, Target, Award, ShieldCheck, ExternalLink } from 'lucide-react';
 import { GamificationService, UserStats, BADGES } from '../services/GamificationService';
 
 declare const puter: any;
@@ -36,7 +36,7 @@ export default function ProfileMode() {
     <div className="flex flex-col items-center p-6 w-full max-w-md mx-auto space-y-6">
       <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
         <div className="bg-indigo-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Trophy className="w-8 h-8 text-indigo-600" />
+          <Calculator className="w-8 h-8 text-indigo-600" />
         </div>
         <h2 className="text-2xl font-bold text-gray-800">Your Progress</h2>
         <p className="text-sm text-gray-500 mt-1">Keep solving problems to earn more badges!</p>

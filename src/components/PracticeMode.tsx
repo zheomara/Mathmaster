@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PracticeProblem from './PracticeProblem';
-import { BrainCircuit } from 'lucide-react';
+import { Calculator } from 'lucide-react';
 
 export default function PracticeMode() {
   const [problems, setProblems] = useState<string[]>([]);
@@ -27,7 +27,7 @@ export default function PracticeMode() {
 
       {problems.length === 0 ? (
         <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100 text-center w-full">
-          <BrainCircuit className="w-12 h-12 text-indigo-400 mx-auto mb-3" />
+          <Calculator className="w-12 h-12 text-indigo-400 mx-auto mb-3" />
           <h3 className="text-lg font-semibold text-indigo-900 mb-2">No Practice Problems Yet</h3>
           <p className="text-indigo-700 text-sm">
             Head over to the Solver tab and ask a math question. The app will automatically generate personalized practice problems for you here!

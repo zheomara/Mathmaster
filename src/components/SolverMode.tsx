@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera as LucideCamera, Loader2, Calculator, Send, BookOpen, PenTool, PlayCircle } from 'lucide-react';
+import { Camera as LucideCamera, Loader2, Calculator, Send, BookOpen, PenTool, PlayCircle, Pi } from 'lucide-react';
 import { MathSolution, GeminiMathSolver } from '../services/GeminiMathSolver';
 import { GamificationService } from '../services/GamificationService';
 import { useMathStream } from '../hooks/useMathStream';
@@ -211,8 +211,13 @@ export default function SolverMode() {
             <img src={image} alt="Equation" className="h-32 w-full object-contain rounded-lg" />
           ) : (
             <>
-              <div className="bg-indigo-50 p-3 rounded-full mb-3">
-                <LucideCamera className="w-6 h-6 text-indigo-500" />
+              <div className="flex items-center space-x-2 mb-3">
+                <div className="bg-indigo-50 p-3 rounded-full">
+                  <LucideCamera className="w-6 h-6 text-indigo-500" />
+                </div>
+                <div className="bg-amber-50 p-3 rounded-full">
+                  <Pi className="w-6 h-6 text-amber-500" />
+                </div>
               </div>
               <span className="font-medium text-gray-700 text-sm">Tap to Scan Equation</span>
             </>

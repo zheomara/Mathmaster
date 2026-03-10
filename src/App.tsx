@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { BrainCircuit, Camera, User, Flame, Loader2 } from 'lucide-react';
+import { Calculator, Camera, User, Flame, Loader2 } from 'lucide-react';
 import { GamificationService } from './services/GamificationService';
 import LicenseGate from './components/LicenseGate';
 
@@ -28,7 +28,7 @@ export default function App() {
           <div className="max-w-md mx-auto px-6 py-4 flex items-center justify-between">
             <h1 className="text-xl font-bold tracking-tight text-gray-900 flex items-center space-x-2">
               <span className="bg-indigo-600 text-white p-1.5 rounded-lg">
-                <BrainCircuit className="w-5 h-5" />
+                <Calculator className="w-5 h-5" />
               </span>
               <span>MathMaster</span>
             </h1>
@@ -59,7 +59,7 @@ export default function App() {
                 activeTab === 'practice' ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              <BrainCircuit className="w-6 h-6" />
+              <Calculator className="w-6 h-6" />
               <span className="text-xs font-medium">Practice</span>
             </button>
             <button
