@@ -5,8 +5,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { GamificationService } from '../services/GamificationService';
-import MathSolutionPlayer, { SolutionStep } from './MathSolutionPlayer';
+import type { SolutionStep } from './MathSolutionPlayer';
 import { mathToSpeech } from '../utils/mathToSpeech';
+
+const MathSolutionPlayer = React.lazy(() => import('./MathSolutionPlayer'));
 
 export default function PracticeProblem({ problem }: { problem: string }) {
   const [userAnswer, setUserAnswer] = useState('');
@@ -42,10 +44,12 @@ export default function PracticeProblem({ problem }: { problem: string }) {
   return (
     <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 text-gray-700">
       {showPlayer && evaluation && (
-        <MathSolutionPlayer 
-          steps={parseStepsForPlayer(evaluation.steps)} 
-          onClose={() => setShowPlayer(false)} 
-        />
+        <React.Suspense fallback={<div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"><Loader2 className="w-8 h-8 text-indigo-500 animate-spin" /></div>}>
+          <MathSolutionPlayer 
+            steps={parseStepsForPlayer(evaluation.steps)} 
+            onClose={() => setShowPlayer(false)} 
+          />
+        </React.Suspense>
       )}
 
       <div className="overflow-x-auto mb-3">

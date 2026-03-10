@@ -3,13 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import PracticeMode from './components/PracticeMode';
-import SolverMode from './components/SolverMode';
-import ProfileMode from './components/ProfileMode';
-import LicenseGate from './components/LicenseGate';
-import { BrainCircuit, Camera, User, Flame } from 'lucide-react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { BrainCircuit, Camera, User, Flame, Loader2 } from 'lucide-react';
 import { GamificationService } from './services/GamificationService';
+import LicenseGate from './components/LicenseGate';
+
+const PracticeMode = lazy(() => import('./components/PracticeMode'));
+const SolverMode = lazy(() => import('./components/SolverMode'));
+const ProfileMode = lazy(() => import('./components/ProfileMode'));
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'practice' | 'solver' | 'profile'>('practice');
@@ -39,9 +40,15 @@ export default function App() {
         </header>
 
         <main>
-          {activeTab === 'practice' && <PracticeMode />}
-          {activeTab === 'solver' && <SolverMode />}
-          {activeTab === 'profile' && <ProfileMode />}
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-64 text-indigo-600">
+              <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+          }>
+            {activeTab === 'practice' && <PracticeMode />}
+            {activeTab === 'solver' && <SolverMode />}
+            {activeTab === 'profile' && <ProfileMode />}
+          </Suspense>
         </main>
 
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-safe">

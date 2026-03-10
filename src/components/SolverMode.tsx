@@ -8,11 +8,13 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import PracticeProblem from './PracticeProblem';
-import MathSolutionPlayer, { SolutionStep } from './MathSolutionPlayer';
+import type { SolutionStep } from './MathSolutionPlayer';
 import SkeletonSolution from './SkeletonSolution';
 import SolutionStepCard from './SolutionStepCard';
 import PrerequisiteGate from './PrerequisiteGate';
 import { mathToSpeech } from '../utils/mathToSpeech';
+
+const MathSolutionPlayer = React.lazy(() => import('./MathSolutionPlayer'));
 
 export default function SolverMode() {
   const [image, setImage] = useState<string | null>(null);
@@ -129,10 +131,12 @@ export default function SolverMode() {
   return (
     <div className="flex flex-col items-center p-6 w-full max-w-md mx-auto">
       {showPlayer && solution && solution.steps && (
-        <MathSolutionPlayer 
-          steps={parseStepsForPlayer(solution.steps)} 
-          onClose={() => setShowPlayer(false)} 
-        />
+        <React.Suspense fallback={<div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"><Loader2 className="w-8 h-8 text-indigo-500 animate-spin" /></div>}>
+          <MathSolutionPlayer 
+            steps={parseStepsForPlayer(solution.steps)} 
+            onClose={() => setShowPlayer(false)} 
+          />
+        </React.Suspense>
       )}
 
       <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
