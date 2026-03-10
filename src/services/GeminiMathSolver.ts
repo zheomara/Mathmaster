@@ -47,6 +47,20 @@ function normalizeMathSolution(rawResponse: any): MathSolution {
   };
 }
 
+function isRateLimitOrUnavailable(error: any): boolean {
+  const msg = error?.message || '';
+  const status = error?.status;
+  return (
+    status === 429 || 
+    status === 503 || 
+    msg.includes('429') || 
+    msg.includes('503') ||
+    msg.includes('Rate Limit Exceeded') ||
+    msg.includes('RESOURCE_EXHAUSTED') ||
+    msg.includes('Service Unavailable')
+  );
+}
+
 export class GeminiMathSolver {
   /**
    * Fetches a math solution, attempting Gemini first, and silently failing over to Puter.js on 429/503 errors.
@@ -102,16 +116,7 @@ export class GeminiMathSolver {
       return normalizeMathSolution(text);
 
     } catch (error: any) {
-      // Check if the error is a rate limit or service unavailable
-      const isRateLimitOrUnavailable = 
-        error?.status === 429 || 
-        error?.status === 503 || 
-        error?.message?.includes('429') || 
-        error?.message?.includes('503') ||
-        error?.message?.includes('Rate Limit Exceeded') ||
-        error?.message?.includes('Service Unavailable');
-
-      if (isRateLimitOrUnavailable) {
+      if (isRateLimitOrUnavailable(error)) {
         // --- SILENT FAILOVER: Puter.js ---
         console.warn("Gemini API rate limited or unavailable. Silently falling back to Puter.js...");
         try {
@@ -237,17 +242,37 @@ export class GeminiMathSolver {
       const text = response.text;
       if (!text) return [];
       return JSON.parse(text);
-    } catch (e) {
+    } catch (e: any) {
+      if (isRateLimitOrUnavailable(e)) {
+        console.warn("Gemini API rate limited. Falling back to Puter.js for analyzePrerequisites...");
+        try {
+          let puterPrompt = `${systemPrompt}\n\nProblem: ${userPrompt}`;
+          if (imageBase64) {
+            puterPrompt += "\n[Note: Image provided but cannot be processed by fallback.]";
+          }
+          const puterResponse = await puter.ai.chat(puterPrompt);
+          const responseText = typeof puterResponse === 'string' ? puterResponse : puterResponse?.message?.content || JSON.stringify(puterResponse);
+          
+          const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || responseText.match(/```\n([\s\S]*?)\n```/);
+          const jsonString = jsonMatch ? jsonMatch[1] : responseText;
+          return JSON.parse(jsonString);
+        } catch (puterError) {
+          console.error("Puter.js Fallback Error in analyzePrerequisites:", puterError);
+          return [];
+        }
+      }
       console.error("Failed to analyze prerequisites", e);
       return [];
     }
   }
 
   static async generateMicroLesson(concept: string, problemText: string): Promise<{ lesson: string, youtubeVideoId: string }> {
+    const systemPrompt = `You are an expert math tutor. A student needs to understand the concept of "${concept}" before they can solve the problem: "${problemText}". Provide a very short, focused micro-lesson (max 2 paragraphs) explaining this concept simply to a 5th grader. Use LaTeX for math, wrapping inline math in single $ and block math in double $$. Also, find a highly relevant educational YouTube video ID for this concept (e.g., from Khan Academy, Math Antics, etc.). Return a JSON object with "lesson" and "youtubeVideoId" (if found, else empty string).`;
+    
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
-        contents: `You are an expert math tutor. A student needs to understand the concept of "${concept}" before they can solve the problem: "${problemText}". Provide a very short, focused micro-lesson (max 2 paragraphs) explaining this concept simply to a 5th grader. Use LaTeX for math, wrapping inline math in single $ and block math in double $$. Also, find a highly relevant educational YouTube video ID for this concept (e.g., from Khan Academy, Math Antics, etc.). Return a JSON object with "lesson" and "youtubeVideoId" (if found, else empty string).`,
+        contents: systemPrompt,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -274,7 +299,31 @@ export class GeminiMathSolver {
       }
       
       return { lesson: parsed.lesson, youtubeVideoId: videoId };
-    } catch (e) {
+    } catch (e: any) {
+      if (isRateLimitOrUnavailable(e)) {
+        console.warn("Gemini API rate limited. Falling back to Puter.js for generateMicroLesson...");
+        try {
+          const puterPrompt = `${systemPrompt}\n\nIMPORTANT: You MUST return ONLY a valid JSON object matching this schema: { "lesson": "string", "youtubeVideoId": "string" }`;
+          const puterResponse = await puter.ai.chat(puterPrompt);
+          const responseText = typeof puterResponse === 'string' ? puterResponse : puterResponse?.message?.content || JSON.stringify(puterResponse);
+          
+          const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || responseText.match(/```\n([\s\S]*?)\n```/);
+          const jsonString = jsonMatch ? jsonMatch[1] : responseText;
+          const parsed = JSON.parse(jsonString);
+          
+          let videoId = parsed.youtubeVideoId || "";
+          if (videoId.includes("youtube.com/watch?v=")) {
+            videoId = videoId.split("v=")[1].split("&")[0];
+          } else if (videoId.includes("youtu.be/")) {
+            videoId = videoId.split("youtu.be/")[1].split("?")[0];
+          }
+          
+          return { lesson: parsed.lesson || `Here is a quick overview of ${concept}.`, youtubeVideoId: videoId };
+        } catch (puterError) {
+          console.error("Puter.js Fallback Error in generateMicroLesson:", puterError);
+          return { lesson: `Here is a quick overview of ${concept}.`, youtubeVideoId: "" };
+        }
+      }
       console.error("Failed to generate micro lesson", e);
       return { lesson: `Here is a quick overview of ${concept}.`, youtubeVideoId: "" };
     }
@@ -289,17 +338,18 @@ export class GeminiMathSolver {
   }
 
   static async evaluatePracticeProblem(problemText: string, userAnswer: string): Promise<PracticeEvaluation> {
+    const systemPrompt = `You are an expert math tutor. A student is trying to solve this practice problem: "${problemText}". The student's answer is: "${userAnswer}". 
+              First, determine if the student's answer is correct.
+              Second, provide a brief, encouraging feedback message.
+              Third, provide a detailed, step-by-step solution to the problem using simple English suitable for a 5th grader.
+              Use LaTeX for all math expressions, wrapping inline math in single $ and block math in double $$.`;
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
         contents: {
           parts: [
             {
-              text: `You are an expert math tutor. A student is trying to solve this practice problem: "${problemText}". The student's answer is: "${userAnswer}". 
-              First, determine if the student's answer is correct.
-              Second, provide a brief, encouraging feedback message.
-              Third, provide a detailed, step-by-step solution to the problem using simple English suitable for a 5th grader.
-              Use LaTeX for all math expressions, wrapping inline math in single $ and block math in double $$.`
+              text: systemPrompt
             }
           ]
         },
@@ -330,7 +380,28 @@ export class GeminiMathSolver {
       const text = response.text;
       if (!text) return { isCorrect: false, feedback: "Could not evaluate the answer.", steps: [] };
       return JSON.parse(text);
-    } catch (error) {
+    } catch (error: any) {
+      if (isRateLimitOrUnavailable(error)) {
+        console.warn("Gemini API rate limited. Falling back to Puter.js for evaluatePracticeProblem...");
+        try {
+          const puterPrompt = `${systemPrompt}\n\nIMPORTANT: You MUST return ONLY a valid JSON object matching this schema: { "isCorrect": boolean, "feedback": "string", "steps": ["string"] }`;
+          const puterResponse = await puter.ai.chat(puterPrompt);
+          const responseText = typeof puterResponse === 'string' ? puterResponse : puterResponse?.message?.content || JSON.stringify(puterResponse);
+          
+          const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || responseText.match(/```\n([\s\S]*?)\n```/);
+          const jsonString = jsonMatch ? jsonMatch[1] : responseText;
+          const parsed = JSON.parse(jsonString);
+          
+          return {
+            isCorrect: !!parsed.isCorrect,
+            feedback: parsed.feedback || "Here is the feedback.",
+            steps: Array.isArray(parsed.steps) ? parsed.steps : []
+          };
+        } catch (puterError) {
+          console.error("Puter.js Fallback Error in evaluatePracticeProblem:", puterError);
+          return { isCorrect: false, feedback: "Both primary and fallback solvers failed to evaluate the answer.", steps: [] };
+        }
+      }
       console.error("Gemini API Error:", error);
       return { isCorrect: false, feedback: "An error occurred while evaluating the answer. Please try again.", steps: [] };
     }
