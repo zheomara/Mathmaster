@@ -1,13 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { Trophy, Flame, Target, Award } from 'lucide-react';
+import { Trophy, Flame, Target, Award, ShieldCheck, ExternalLink } from 'lucide-react';
 import { GamificationService, UserStats, BADGES } from '../services/GamificationService';
+
+declare const puter: any;
 
 export default function ProfileMode() {
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [isPuterSignedIn, setIsPuterSignedIn] = useState<boolean>(false);
 
   useEffect(() => {
     setStats(GamificationService.getStats());
+    
+    // Check Puter auth status if available
+    if (typeof puter !== 'undefined') {
+      puter.auth.isSignedIn().then((signed: boolean) => {
+        setIsPuterSignedIn(signed);
+      });
+    }
   }, []);
+
+  const handleConnectPuter = async () => {
+    if (typeof puter === 'undefined') return;
+    try {
+      await puter.auth.signIn();
+      const signed = await puter.auth.isSignedIn();
+      setIsPuterSignedIn(signed);
+    } catch (e) {
+      console.error("Puter sign in error:", e);
+    }
+  };
 
   if (!stats) return null;
 
@@ -32,6 +53,40 @@ export default function ProfileMode() {
           <span className="text-2xl font-bold text-emerald-700">{stats.problemsSolved}</span>
           <span className="text-xs font-medium text-emerald-600 uppercase tracking-wider">Problems Solved</span>
         </div>
+      </div>
+
+      {/* Puter.js Fallback Status */}
+      <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex items-center space-x-2 mb-4">
+          <ShieldCheck className="w-5 h-5 text-indigo-600" />
+          <h3 className="text-lg font-bold text-gray-800">Backup Solver</h3>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          Enable a backup AI solver for when the primary service is busy. This requires a free Puter.com account.
+        </p>
+        
+        {isPuterSignedIn ? (
+          <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+            <div className="flex items-center space-x-3">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-sm font-medium text-emerald-700">Backup Solver Active</span>
+            </div>
+            <button 
+              onClick={() => { puter.auth.signOut(); setIsPuterSignedIn(false); }}
+              className="text-xs text-emerald-600 hover:underline font-medium"
+            >
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <button 
+            onClick={handleConnectPuter}
+            className="w-full flex items-center justify-center space-x-2 p-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors"
+          >
+            <span>Connect Backup Solver</span>
+            <ExternalLink className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
