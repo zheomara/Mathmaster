@@ -131,14 +131,15 @@ export class GeminiMathSolver {
         // --- SILENT FAILOVER: Puter.js ---
         console.warn("Gemini API rate limited or unavailable. Silently falling back to Puter.js...");
         try {
-          // Note: Puter.js chat might not natively support image inputs in the same way, 
-          // so we rely primarily on the text prompt if it's a fallback.
           let puterPrompt = `${systemPrompt}\n\nProblem: ${userPrompt}`;
-          if (imageBase64) {
-              puterPrompt += "\n[Note: An image was provided but cannot be processed by the fallback solver. Please try to solve based on the text description if possible.]";
+          let puterResponse;
+          
+          if (imageBase64 && mimeType) {
+            const dataUri = `data:${mimeType};base64,${imageBase64}`;
+            puterResponse = await puter.ai.chat(puterPrompt, dataUri);
+          } else {
+            puterResponse = await puter.ai.chat(puterPrompt);
           }
-
-          const puterResponse = await puter.ai.chat(puterPrompt);
           
           // puterResponse is typically an object with a 'message' property containing the text
           const responseText = typeof puterResponse === 'string' ? puterResponse : puterResponse?.message?.content || puterResponse?.message || JSON.stringify(puterResponse);
@@ -258,10 +259,15 @@ export class GeminiMathSolver {
         console.warn("Gemini API rate limited. Falling back to Puter.js for analyzePrerequisites...");
         try {
           let puterPrompt = `${systemPrompt}\n\nProblem: ${userPrompt}`;
-          if (imageBase64) {
-            puterPrompt += "\n[Note: Image provided but cannot be processed by fallback.]";
+          let puterResponse;
+          
+          if (imageBase64 && mimeType) {
+            const dataUri = `data:${mimeType};base64,${imageBase64}`;
+            puterResponse = await puter.ai.chat(puterPrompt, dataUri);
+          } else {
+            puterResponse = await puter.ai.chat(puterPrompt);
           }
-          const puterResponse = await puter.ai.chat(puterPrompt);
+          
           const responseText = typeof puterResponse === 'string' ? puterResponse : puterResponse?.message?.content || JSON.stringify(puterResponse);
           
           const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || responseText.match(/```\n([\s\S]*?)\n```/);
