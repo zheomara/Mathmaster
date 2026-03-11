@@ -1,4 +1,6 @@
 import { parse as parsePartialJson } from "best-effort-json-parser";
+import { GoogleGenAI } from "@google/genai";
+import { Capacitor } from "@capacitor/core";
 
 declare const puter: any;
 
@@ -43,6 +45,78 @@ function normalizeMathSolution(rawResponse: any): MathSolution {
   };
 }
 
+function getGeminiKey(): string {
+  // Defined in `vite.config.ts` via `define: { 'process.env.GEMINI_API_KEY': ... }`
+  const key = (process.env as any)?.GEMINI_API_KEY;
+  return typeof key === "string" ? key : "";
+}
+
+function getSolverApiBase(): string {
+  const base = (import.meta as any)?.env?.VITE_SOLVER_API_BASE;
+  return typeof base === "string" ? base.replace(/\/+$/, "") : "";
+}
+
+async function callSolverApi(
+  fullPrompt: string,
+  imageBase64?: string,
+  mimeType?: string
+): Promise<MathSolution> {
+  const base = getSolverApiBase();
+  if (!base) {
+    throw new Error("Missing VITE_SOLVER_API_BASE (required on mobile).");
+  }
+
+  const res = await fetch(`${base}/api/solve`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ prompt: fullPrompt, imageBase64, mimeType }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || "The AI service is currently busy or unavailable.");
+  }
+
+  return normalizeMathSolution(data?.solution);
+}
+
+async function geminiJson(prompt: string, imageBase64?: string, mimeType?: string): Promise<any> {
+  const apiKey = getGeminiKey();
+  if (!apiKey) {
+    throw new Error("Missing GEMINI_API_KEY.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const parts: any[] = [{ text: prompt }];
+  if (imageBase64 && mimeType) {
+    parts.push({
+      inlineData: {
+        data: imageBase64,
+        mimeType,
+      },
+    });
+  }
+
+  const res = await ai.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: [{ role: "user", parts }],
+    config: {
+      responseMimeType: "application/json",
+    },
+  });
+
+  const text = res.text ?? "";
+  if (!text) throw new Error("Empty response from Gemini.");
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Gemini can still occasionally return almost-JSON; best-effort parse.
+    return parsePartialJson(text);
+  }
+}
+
 export class MathSolver {
   /**
    * Fetches a math solution using Puter.js.
@@ -51,13 +125,41 @@ export class MathSolver {
     const systemPrompt = "You are an expert math tutor. Solve the math problem provided. First, provide the 'assumedKnowledge' (prerequisite concepts, formulas, or theorems needed to understand the solution). Then, provide a detailed, 'steps' array. Explain everything using very simple English that a 5th grader (10-year-old) would easily understand. Avoid overly complex academic jargon where possible, and explain concepts simply. Finally, provide 3 similar 'practiceProblems' for the user to try. Use LaTeX for all math expressions, wrapping inline math in single $ and block math in double $$. IMPORTANT: You MUST return ONLY a valid JSON object matching this schema: { \"assumedKnowledge\": [\"string\"], \"steps\": [\"string\"], \"practiceProblems\": [\"string\"] }";
 
     try {
-      const puterPrompt = `${systemPrompt}\n\nProblem: ${userPrompt}`;
-      const res = await puter.ai.chat(puterPrompt, imageBase64);
-      const text = typeof res === 'string' ? res : res?.message?.content || res?.message || JSON.stringify(res);
+      const fullPrompt = `${systemPrompt}\n\nProblem: ${userPrompt}`;
+
+      // Native builds must use a real HTTPS origin; server-side can do Gemini + Puter fallback safely.
+      if (Capacitor.isNativePlatform()) {
+        return await callSolverApi(fullPrompt, imageBase64, mimeType);
+      }
+
+      // If a server endpoint is configured, prefer it even on web (keeps fallback behavior consistent).
+      if (getSolverApiBase()) {
+        return await callSolverApi(fullPrompt, imageBase64, mimeType);
+      }
+
+      // Prefer Gemini when configured (works in native without Puter auth redirects).
+      const geminiKey = getGeminiKey();
+      if (geminiKey) {
+        const json = await geminiJson(fullPrompt, imageBase64, mimeType);
+        return normalizeMathSolution(json);
+      }
+
+      if (typeof puter === "undefined") {
+        throw new Error("AI provider unavailable. Please try again later.");
+      }
+
+      // Only use Puter if already signed in; otherwise it may navigate to puter.com and trap the user.
+      const signedIn = await puter.auth?.isSignedIn?.().catch(() => false);
+      if (!signedIn) {
+        throw new Error("Backup Solver not connected. Open Profile → Connect Backup Solver, or configure GEMINI_API_KEY.");
+      }
+
+      const res = await puter.ai.chat(fullPrompt, imageBase64);
+      const text = typeof res === "string" ? res : res?.message?.content || res?.message || JSON.stringify(res);
       return normalizeMathSolution(text);
     } catch (error: any) {
       console.error("Puter AI Error:", error);
-      return { assumedKnowledge: [], steps: ["An error occurred while solving the problem. Please try again."], practiceProblems: [] };
+      throw new Error(error?.message || "An error occurred while solving the problem. Please try again.");
     }
   }
 
@@ -74,9 +176,22 @@ export class MathSolver {
   static async analyzePrerequisites(userPrompt: string, imageBase64?: string, mimeType?: string): Promise<string[]> {
     const systemPrompt = "Analyze the following math problem and list 3 to 5 foundational concepts required to solve it. Return ONLY a valid JSON array of strings. Example: [\"Understanding Variables\", \"Factoring Quadratics\"]";
     try {
-      const puterPrompt = `${systemPrompt}\n\nProblem: ${userPrompt}`;
-      const res = await puter.ai.chat(puterPrompt, imageBase64);
-      const text = typeof res === 'string' ? res : res?.message?.content || res?.message || JSON.stringify(res);
+      const fullPrompt = `${systemPrompt}\n\nProblem: ${userPrompt}`;
+
+      const geminiKey = getGeminiKey();
+      if (geminiKey) {
+        const json = await geminiJson(fullPrompt, imageBase64, mimeType);
+        return Array.isArray(json) ? json : [];
+      }
+
+      if (Capacitor.isNativePlatform()) return [];
+      if (typeof puter === "undefined") return [];
+
+      const signedIn = await puter.auth?.isSignedIn?.().catch(() => false);
+      if (!signedIn) return [];
+
+      const res = await puter.ai.chat(fullPrompt, imageBase64);
+      const text = typeof res === "string" ? res : res?.message?.content || res?.message || JSON.stringify(res);
       return JSON.parse(text);
     } catch (e: any) {
       console.error("Failed to analyze prerequisites", e);
@@ -88,9 +203,18 @@ export class MathSolver {
     const systemPrompt = `You are an expert math tutor. A student needs to understand the concept of "${concept}" before they can solve the problem: "${problemText}". Provide a very short, focused micro-lesson (max 2 paragraphs) explaining this concept simply to a 5th grader. Use LaTeX for math, wrapping inline math in single $ and block math in double $$. Also, find a highly relevant educational YouTube video ID for this concept (e.g., from Khan Academy, Math Antics, etc.). Return a JSON object with "lesson" and "youtubeVideoId" (if found, else empty string).`;
     
     try {
-      const res = await puter.ai.chat(systemPrompt);
-      const text = typeof res === 'string' ? res : res?.message?.content || res?.message || JSON.stringify(res);
-      const parsed = JSON.parse(text);
+      const geminiKey = getGeminiKey();
+      const parsed = geminiKey
+        ? await geminiJson(systemPrompt)
+        : await (async () => {
+            if (Capacitor.isNativePlatform()) throw new Error("AI is not configured for mobile.");
+            if (typeof puter === "undefined") throw new Error("AI provider unavailable.");
+            const signedIn = await puter.auth?.isSignedIn?.().catch(() => false);
+            if (!signedIn) throw new Error("Backup Solver not connected.");
+            const res = await puter.ai.chat(systemPrompt);
+            const text = typeof res === "string" ? res : res?.message?.content || res?.message || JSON.stringify(res);
+            return JSON.parse(text);
+          })();
       
       // Clean up youtube video ID if it's a full URL
       let videoId = parsed.youtubeVideoId || "";
@@ -122,12 +246,29 @@ export class MathSolver {
               Third, provide a detailed, step-by-step solution to the problem using simple English suitable for a 5th grader.
               Use LaTeX for all math expressions, wrapping inline math in single $ and block math in double $$.`;
     try {
+      const geminiKey = getGeminiKey();
+      if (geminiKey) {
+        const json = await geminiJson(systemPrompt);
+        return json as PracticeEvaluation;
+      }
+
+      if (Capacitor.isNativePlatform()) {
+        throw new Error("AI is not configured for mobile.");
+      }
+      if (typeof puter === "undefined") {
+        throw new Error("AI provider unavailable.");
+      }
+      const signedIn = await puter.auth?.isSignedIn?.().catch(() => false);
+      if (!signedIn) {
+        throw new Error("Backup Solver not connected.");
+      }
+
       const res = await puter.ai.chat(systemPrompt);
-      const text = typeof res === 'string' ? res : res?.message?.content || res?.message || JSON.stringify(res);
+      const text = typeof res === "string" ? res : res?.message?.content || res?.message || JSON.stringify(res);
       return JSON.parse(text);
     } catch (error: any) {
       console.error("Puter AI Error:", error);
-      return { isCorrect: false, feedback: "An error occurred while evaluating the answer. Please try again.", steps: [] };
+      throw new Error(error?.message || "An error occurred while evaluating the answer. Please try again.");
     }
   }
 }
