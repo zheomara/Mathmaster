@@ -1,12 +1,8 @@
-import { parse as parsePartialJson } from "best-effort-json-parser";
+import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 declare const puter: any;
-
-export interface MathSolution {
-  assumedKnowledge: string[];
-  steps: string[];
-  practiceProblems: string[];
-}
 
 export interface PracticeEvaluation {
   isCorrect: boolean;
@@ -14,120 +10,91 @@ export interface PracticeEvaluation {
   steps: string[];
 }
 
-/**
- * Normalizes the response from Puter into the strict MathSolution interface.
- */
-function normalizeMathSolution(rawResponse: any): MathSolution {
-  // If it's already a string, try to parse it
-  let data = rawResponse;
-  if (typeof rawResponse === 'string') {
-    try {
-      // Sometimes LLMs wrap JSON in markdown blocks
-      const jsonMatch = rawResponse.match(/```json\n([\s\S]*?)\n```/) || rawResponse.match(/```\n([\s\S]*?)\n```/);
-      const jsonString = jsonMatch ? jsonMatch[1] : rawResponse;
-      data = JSON.parse(jsonString);
-    } catch (e) {
-      console.error("Failed to parse response as JSON:", rawResponse);
-      return {
-        assumedKnowledge: [],
-        steps: ["Could not understand the response format from the AI."],
-        practiceProblems: []
-      };
-    }
-  }
-
-  return {
-    assumedKnowledge: Array.isArray(data?.assumedKnowledge) ? data.assumedKnowledge : [],
-    steps: Array.isArray(data?.steps) ? data.steps : ["No steps provided."],
-    practiceProblems: Array.isArray(data?.practiceProblems) ? data.practiceProblems : []
-  };
+export interface MathSolution {
+  text: string;
+  steps: string[];
+  assumedKnowledge?: string[];
+  practiceProblems?: string[];
 }
 
 export class MathSolver {
-  /**
-   * Fetches a math solution using Puter.js.
-   */
-  static async fetchMathSolution(userPrompt: string, imageBase64?: string, mimeType?: string): Promise<MathSolution> {
-    const systemPrompt = "You are an expert math tutor. Solve the math problem provided. First, provide the 'assumedKnowledge' (prerequisite concepts, formulas, or theorems needed to understand the solution). Then, provide a detailed, 'steps' array. Explain everything using very simple English that a 5th grader (10-year-old) would easily understand. Avoid overly complex academic jargon where possible, and explain concepts simply. Finally, provide 3 similar 'practiceProblems' for the user to try. Use LaTeX for all math expressions, wrapping inline math in single $ and block math in double $$. IMPORTANT: You MUST return ONLY a valid JSON object matching this schema: { \"assumedKnowledge\": [\"string\"], \"steps\": [\"string\"], \"practiceProblems\": [\"string\"] }";
-
+  static async evaluatePracticeProblem(problem: string, answer: string): Promise<PracticeEvaluation> {
     try {
-      const puterPrompt = `${systemPrompt}\n\nProblem: ${userPrompt}`;
-      const res = await puter.ai.chat(puterPrompt, imageBase64);
-      const text = typeof res === 'string' ? res : res?.message?.content || res?.message || JSON.stringify(res);
-      return normalizeMathSolution(text);
-    } catch (error: any) {
-      console.error("Puter AI Error:", error);
-      return { assumedKnowledge: [], steps: ["An error occurred while solving the problem. Please try again."], practiceProblems: [] };
-    }
-  }
-
-  static async fetchStreamedSolution(
-    userPrompt: string, 
-    onChunk: (partialSolution: Partial<MathSolution>) => void,
-    imageBase64?: string, 
-    mimeType?: string
-  ): Promise<MathSolution> {
-    // Puter.js doesn't seem to support streaming, so we fallback to non-streaming
-    return this.fetchMathSolution(userPrompt, imageBase64, mimeType);
-  }
-
-  static async analyzePrerequisites(userPrompt: string, imageBase64?: string, mimeType?: string): Promise<string[]> {
-    const systemPrompt = "Analyze the following math problem and list 3 to 5 foundational concepts required to solve it. Return ONLY a valid JSON array of strings. Example: [\"Understanding Variables\", \"Factoring Quadratics\"]";
-    try {
-      const puterPrompt = `${systemPrompt}\n\nProblem: ${userPrompt}`;
-      const res = await puter.ai.chat(puterPrompt, imageBase64);
-      const text = typeof res === 'string' ? res : res?.message?.content || res?.message || JSON.stringify(res);
-      return JSON.parse(text);
-    } catch (e: any) {
-      console.error("Failed to analyze prerequisites", e);
-      return [];
-    }
-  }
-
-  static async generateMicroLesson(concept: string, problemText: string): Promise<{ lesson: string, youtubeVideoId: string }> {
-    const systemPrompt = `You are an expert math tutor. A student needs to understand the concept of "${concept}" before they can solve the problem: "${problemText}". Provide a very short, focused micro-lesson (max 2 paragraphs) explaining this concept simply to a 5th grader. Use LaTeX for math, wrapping inline math in single $ and block math in double $$. Also, find a highly relevant educational YouTube video ID for this concept (e.g., from Khan Academy, Math Antics, etc.). Return a JSON object with "lesson" and "youtubeVideoId" (if found, else empty string).`;
-    
-    try {
-      const res = await puter.ai.chat(systemPrompt);
-      const text = typeof res === 'string' ? res : res?.message?.content || res?.message || JSON.stringify(res);
-      const parsed = JSON.parse(text);
-      
-      // Clean up youtube video ID if it's a full URL
-      let videoId = parsed.youtubeVideoId || "";
-      if (videoId.includes("youtube.com/watch?v=")) {
-        videoId = videoId.split("v=")[1].split("&")[0];
-      } else if (videoId.includes("youtu.be/")) {
-        videoId = videoId.split("youtu.be/")[1].split("?")[0];
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Problem: ${problem}. User Answer: ${answer}. Evaluate if the answer is correct and provide step-by-step feedback. Return JSON with fields: isCorrect (boolean), feedback (string), steps (array of strings).`,
+        config: { responseMimeType: "application/json" }
+      });
+      return JSON.parse(response.text || "{}");
+    } catch (error) {
+      console.error("Gemini failed, trying Puter fallback", error);
+      if (typeof puter !== 'undefined' && puter.ai) {
+        const response = await puter.ai.chat(`Evaluate if the answer is correct for problem: ${problem}. User Answer: ${answer}. Return JSON with fields: isCorrect (boolean), feedback (string), steps (array of strings).`);
+        return JSON.parse(response || "{}");
       }
-      
-      return { lesson: parsed.lesson, youtubeVideoId: videoId };
-    } catch (e: any) {
-      console.error("Failed to generate micro lesson", e);
-      return { lesson: `Here is a quick overview of ${concept}.`, youtubeVideoId: "" };
+      throw error;
     }
   }
 
-  static async solveFromImage(base64Data: string, mimeType: string): Promise<MathSolution> {
-      return this.fetchMathSolution("Solve the math problem shown in the image.", base64Data, mimeType);
-  }
-
-  static async solveFromText(problemText: string): Promise<MathSolution> {
-      return this.fetchMathSolution(problemText);
-  }
-
-  static async evaluatePracticeProblem(problemText: string, userAnswer: string): Promise<PracticeEvaluation> {
-    const systemPrompt = `You are an expert math tutor. A student is trying to solve this practice problem: "${problemText}". The student's answer is: "${userAnswer}". 
-              First, determine if the student's answer is correct.
-              Second, provide a brief, encouraging feedback message.
-              Third, provide a detailed, step-by-step solution to the problem using simple English suitable for a 5th grader.
-              Use LaTeX for all math expressions, wrapping inline math in single $ and block math in double $$.`;
+  static async analyzePrerequisites(text: string, base64Data?: string, mimeType?: string): Promise<string[]> {
     try {
-      const res = await puter.ai.chat(systemPrompt);
-      const text = typeof res === 'string' ? res : res?.message?.content || res?.message || JSON.stringify(res);
-      return JSON.parse(text);
-    } catch (error: any) {
-      console.error("Puter AI Error:", error);
-      return { isCorrect: false, feedback: "An error occurred while evaluating the answer. Please try again.", steps: [] };
+      const contents: any = { text: `Analyze this math problem and list the prerequisite concepts needed to solve it: ${text}` };
+      if (base64Data && mimeType) {
+        contents.parts = [{ inlineData: { data: base64Data, mimeType } }, { text: contents.text }];
+      }
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: contents,
+        config: { responseMimeType: "application/json", responseSchema: { type: "ARRAY", items: { type: "STRING" } } }
+      });
+      return JSON.parse(response.text || "[]");
+    } catch (error) {
+      console.error("Gemini failed, trying Puter fallback", error);
+      if (typeof puter !== 'undefined' && puter.ai) {
+        const response = await puter.ai.chat(`Analyze this math problem and list the prerequisite concepts needed to solve it: ${text}. Return a JSON array of strings.`);
+        return JSON.parse(response || "[]");
+      }
+      throw error;
+    }
+  }
+
+  static async generateMicroLesson(concept: string, problem: string): Promise<{ lesson: string; youtubeVideoId: string }> {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Generate a micro-lesson for the concept: ${concept}, related to the problem: ${problem}. Return JSON with fields: lesson (string), youtubeVideoId (string).`,
+        config: { responseMimeType: "application/json" }
+      });
+      return JSON.parse(response.text || "{}");
+    } catch (error) {
+      console.error("Gemini failed, trying Puter fallback", error);
+      if (typeof puter !== 'undefined' && puter.ai) {
+        const response = await puter.ai.chat(`Generate a micro-lesson for the concept: ${concept}, related to the problem: ${problem}. Return JSON with fields: lesson (string), youtubeVideoId (string).`);
+        return JSON.parse(response || "{}");
+      }
+      throw error;
+    }
+  }
+
+  static async fetchStreamedSolution(problem: string, onChunk: (partial: any) => void, base64Data?: string, mimeType?: string): Promise<MathSolution> {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Solve this problem step-by-step: ${problem}. Return JSON with fields: text (string), steps (array of strings), assumedKnowledge (array of strings), practiceProblems (array of strings).`,
+        config: { responseMimeType: "application/json" }
+      });
+      const solution = JSON.parse(response.text || "{}");
+      onChunk(solution);
+      return solution;
+    } catch (error) {
+      console.error("Gemini failed, trying Puter fallback", error);
+      if (typeof puter !== 'undefined' && puter.ai) {
+        const response = await puter.ai.chat(`Solve this problem step-by-step: ${problem}. Return JSON with fields: text (string), steps (array of strings), assumedKnowledge (array of strings), practiceProblems (array of strings).`);
+        const solution = JSON.parse(response || "{}");
+        onChunk(solution);
+        return solution;
+      }
+      throw error;
     }
   }
 }

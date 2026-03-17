@@ -1,22 +1,21 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, Suspense, lazy } from 'react';
 import { Camera as LucideCamera, Loader2, Calculator, Send, BookOpen, PenTool, PlayCircle, Pi } from 'lucide-react';
 import { MathSolution, MathSolver } from '../services/MathSolver';
 import { GamificationService } from '../services/GamificationService';
 import { useMathStream } from '../hooks/useMathStream';
 import { motion } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
 import PracticeProblem from './PracticeProblem';
 import type { SolutionStep } from './MathSolutionPlayer';
 import SkeletonSolution from './SkeletonSolution';
 import SolutionStepCard from './SolutionStepCard';
 import PrerequisiteGate from './PrerequisiteGate';
+import LazyMarkdown from './LazyMarkdown';
 import { mathToSpeech } from '../utils/mathToSpeech';
 import { fixMathDelimiters } from '../utils/mathUtils';
 import { Capacitor } from '@capacitor/core';
 import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
+
+import 'katex/dist/katex.min.css';
 
 const MathSolutionPlayer = React.lazy(() => import('./MathSolutionPlayer'));
 
@@ -298,9 +297,9 @@ export default function SolverMode() {
                 Micro-Lesson: {ml.concept}
               </h3>
               <div className="text-blue-800 text-sm leading-relaxed space-y-4">
-                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                <LazyMarkdown>
                   {fixMathDelimiters(ml.lesson)}
-                </ReactMarkdown>
+                </LazyMarkdown>
                 
                 {ml.youtubeVideoId && (
                   <div className="mt-4 rounded-xl overflow-hidden shadow-sm border border-blue-200 aspect-video">
@@ -338,12 +337,9 @@ export default function SolverMode() {
                 <ul className="list-disc pl-5 space-y-2 text-gray-700">
                   {solution.assumedKnowledge.map((item, idx) => (
                     <li key={idx} className="leading-relaxed">
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkMath]} 
-                        rehypePlugins={[rehypeKatex]}
-                      >
+                      <LazyMarkdown>
                         {fixMathDelimiters(item)}
-                      </ReactMarkdown>
+                      </LazyMarkdown>
                     </li>
                   ))}
                 </ul>

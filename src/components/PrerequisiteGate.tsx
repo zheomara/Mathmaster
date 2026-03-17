@@ -62,11 +62,11 @@ export default function PrerequisiteGate({ prerequisites, onComplete }: Prerequi
           {uniquePrerequisites.map((concept) => (
             <div key={concept} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 gap-4">
               <span className="font-medium text-gray-800">{concept}</span>
-              <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:flex-row sm:gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => handleSelect(concept, true)}
-                  className={`flex items-center justify-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex-1 flex items-center justify-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selections[concept] === true 
                       ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
                       : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
@@ -78,7 +78,7 @@ export default function PrerequisiteGate({ prerequisites, onComplete }: Prerequi
                 <button
                   type="button"
                   onClick={() => handleSelect(concept, false)}
-                  className={`flex items-center justify-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex-1 flex items-center justify-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selections[concept] === false 
                       ? 'bg-blue-100 text-blue-700 border border-blue-200' 
                       : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
