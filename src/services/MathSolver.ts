@@ -18,6 +18,19 @@ export interface MathSolution {
 }
 
 export class MathSolver {
+  private static safeParseJSON(text: string, fallback: any) {
+    if (!text) return fallback;
+    try {
+      // Try to extract JSON from markdown code blocks if present
+      const jsonMatch = text.match(/```(?:json)?\n([\s\S]*?)\n```/);
+      const jsonString = jsonMatch ? jsonMatch[1] : text;
+      return JSON.parse(jsonString);
+    } catch (e) {
+      console.warn("Failed to parse JSON response:", text);
+      return fallback;
+    }
+  }
+
   static async evaluatePracticeProblem(problem: string, answer: string): Promise<PracticeEvaluation> {
     try {
       const response = await ai.models.generateContent({
@@ -25,12 +38,12 @@ export class MathSolver {
         contents: `Problem: ${problem}. User Answer: ${answer}. Evaluate if the answer is correct and provide step-by-step feedback. Return JSON with fields: isCorrect (boolean), feedback (string), steps (array of strings).`,
         config: { responseMimeType: "application/json" }
       });
-      return JSON.parse(response.text || "{}");
+      return this.safeParseJSON(response.text || "", {});
     } catch (error) {
       console.error("Gemini failed, trying Puter fallback", error);
       if (typeof puter !== 'undefined' && puter.ai) {
         const response = await puter.ai.chat(`Evaluate if the answer is correct for problem: ${problem}. User Answer: ${answer}. Return JSON with fields: isCorrect (boolean), feedback (string), steps (array of strings).`);
-        return JSON.parse(response || "{}");
+        return this.safeParseJSON(response || "", {});
       }
       throw error;
     }
@@ -50,12 +63,12 @@ export class MathSolver {
         contents: { parts },
         config: { responseMimeType: "application/json", responseSchema: { type: "ARRAY", items: { type: "STRING" } } }
       });
-      return JSON.parse(response.text || "[]");
+      return this.safeParseJSON(response.text || "", []);
     } catch (error) {
       console.error("Gemini analyzePrerequisites failed:", error);
       if (typeof puter !== 'undefined' && puter.ai) {
         const response = await puter.ai.chat(`Analyze this math problem and list the prerequisite concepts needed to solve it: ${text}. Return a JSON array of strings.`);
-        return JSON.parse(response || "[]");
+        return this.safeParseJSON(response || "", []);
       }
       throw error;
     }
@@ -68,12 +81,12 @@ export class MathSolver {
         contents: `Generate a micro-lesson for the concept: ${concept}, related to the problem: ${problem}. Return JSON with fields: lesson (string), youtubeVideoId (string).`,
         config: { responseMimeType: "application/json" }
       });
-      return JSON.parse(response.text || "{}");
+      return this.safeParseJSON(response.text || "", {});
     } catch (error) {
       console.error("Gemini generateMicroLesson failed:", error);
       if (typeof puter !== 'undefined' && puter.ai) {
         const response = await puter.ai.chat(`Generate a micro-lesson for the concept: ${concept}, related to the problem: ${problem}. Return JSON with fields: lesson (string), youtubeVideoId (string).`);
-        return JSON.parse(response || "{}");
+        return this.safeParseJSON(response || "", {});
       }
       throw error;
     }
@@ -99,7 +112,7 @@ export class MathSolver {
       }
       
       console.log("Gemini response:", response.text);
-      const solution = JSON.parse(response.text);
+      const solution = this.safeParseJSON(response.text, {});
       onChunk(solution);
       return solution;
     } catch (error) {
@@ -107,7 +120,7 @@ export class MathSolver {
       if (typeof puter !== 'undefined' && puter.ai) {
         // Puter fallback might not support image data easily, but let's keep it as is
         const response = await puter.ai.chat(`Solve this problem step-by-step: ${problem}. Return JSON with fields: text (string), steps (array of strings), assumedKnowledge (array of strings), practiceProblems (array of strings).`);
-        const solution = JSON.parse(response || "{}");
+        const solution = this.safeParseJSON(response || "", {});
         onChunk(solution);
         return solution;
       }

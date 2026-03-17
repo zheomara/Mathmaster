@@ -30,7 +30,8 @@ export default function SolverMode() {
   const takePhoto = async () => {
     try {
       const photo = await CapCamera.getPhoto({
-        quality: 90,
+        quality: 60,
+        width: 1024,
         allowEditing: false,
         resultType: CameraResultType.Base64,
         source: CameraSource.Prompt
