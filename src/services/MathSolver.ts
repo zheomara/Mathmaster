@@ -38,13 +38,16 @@ export class MathSolver {
 
   static async analyzePrerequisites(text: string, base64Data?: string, mimeType?: string): Promise<string[]> {
     try {
-      const contents: any = { text: `Analyze this math problem and list the prerequisite concepts needed to solve it: ${text}` };
+      const prompt = `Analyze this math problem and list the prerequisite concepts needed to solve it: ${text}`;
+      
+      const parts: any[] = [{ text: prompt }];
       if (base64Data && mimeType) {
-        contents.parts = [{ inlineData: { data: base64Data, mimeType } }, { text: contents.text }];
+        parts.unshift({ inlineData: { data: base64Data, mimeType } });
       }
+
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: contents,
+        contents: { parts },
         config: { responseMimeType: "application/json", responseSchema: { type: "ARRAY", items: { type: "STRING" } } }
       });
       return JSON.parse(response.text || "[]");
@@ -80,17 +83,23 @@ export class MathSolver {
     try {
       const prompt = `Solve this problem step-by-step: ${problem}. Return JSON with fields: text (string), steps (array of strings), assumedKnowledge (array of strings), practiceProblems (array of strings).`;
       
-      let contents: any = { text: prompt };
+      const parts: any[] = [{ text: prompt }];
       if (base64Data && mimeType) {
-        contents = { parts: [{ inlineData: { data: base64Data, mimeType } }, { text: prompt }] };
+        parts.unshift({ inlineData: { data: base64Data, mimeType } });
       }
 
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: contents,
+        contents: { parts },
         config: { responseMimeType: "application/json" }
       });
-      const solution = JSON.parse(response.text || "{}");
+      
+      if (!response.text) {
+        throw new Error("No response text from Gemini");
+      }
+      
+      console.log("Gemini response:", response.text);
+      const solution = JSON.parse(response.text);
       onChunk(solution);
       return solution;
     } catch (error) {
