@@ -46,13 +46,13 @@ export class MathSolver {
       }
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-pro-preview",
         contents: { parts },
         config: { responseMimeType: "application/json", responseSchema: { type: "ARRAY", items: { type: "STRING" } } }
       });
       return JSON.parse(response.text || "[]");
     } catch (error) {
-      console.error("Gemini failed, trying Puter fallback", error);
+      console.error("Gemini analyzePrerequisites failed:", error);
       if (typeof puter !== 'undefined' && puter.ai) {
         const response = await puter.ai.chat(`Analyze this math problem and list the prerequisite concepts needed to solve it: ${text}. Return a JSON array of strings.`);
         return JSON.parse(response || "[]");
@@ -64,13 +64,13 @@ export class MathSolver {
   static async generateMicroLesson(concept: string, problem: string): Promise<{ lesson: string; youtubeVideoId: string }> {
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-pro-preview",
         contents: `Generate a micro-lesson for the concept: ${concept}, related to the problem: ${problem}. Return JSON with fields: lesson (string), youtubeVideoId (string).`,
         config: { responseMimeType: "application/json" }
       });
       return JSON.parse(response.text || "{}");
     } catch (error) {
-      console.error("Gemini failed, trying Puter fallback", error);
+      console.error("Gemini generateMicroLesson failed:", error);
       if (typeof puter !== 'undefined' && puter.ai) {
         const response = await puter.ai.chat(`Generate a micro-lesson for the concept: ${concept}, related to the problem: ${problem}. Return JSON with fields: lesson (string), youtubeVideoId (string).`);
         return JSON.parse(response || "{}");
@@ -89,7 +89,7 @@ export class MathSolver {
       }
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-pro-preview",
         contents: { parts },
         config: { responseMimeType: "application/json" }
       });
@@ -103,7 +103,7 @@ export class MathSolver {
       onChunk(solution);
       return solution;
     } catch (error) {
-      console.error("Gemini failed, trying Puter fallback", error);
+      console.error("Gemini fetchStreamedSolution failed:", error);
       if (typeof puter !== 'undefined' && puter.ai) {
         // Puter fallback might not support image data easily, but let's keep it as is
         const response = await puter.ai.chat(`Solve this problem step-by-step: ${problem}. Return JSON with fields: text (string), steps (array of strings), assumedKnowledge (array of strings), practiceProblems (array of strings).`);
