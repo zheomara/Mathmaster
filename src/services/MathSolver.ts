@@ -78,9 +78,16 @@ export class MathSolver {
 
   static async fetchStreamedSolution(problem: string, onChunk: (partial: any) => void, base64Data?: string, mimeType?: string): Promise<MathSolution> {
     try {
+      const prompt = `Solve this problem step-by-step: ${problem}. Return JSON with fields: text (string), steps (array of strings), assumedKnowledge (array of strings), practiceProblems (array of strings).`;
+      
+      let contents: any = { text: prompt };
+      if (base64Data && mimeType) {
+        contents = { parts: [{ inlineData: { data: base64Data, mimeType } }, { text: prompt }] };
+      }
+
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Solve this problem step-by-step: ${problem}. Return JSON with fields: text (string), steps (array of strings), assumedKnowledge (array of strings), practiceProblems (array of strings).`,
+        contents: contents,
         config: { responseMimeType: "application/json" }
       });
       const solution = JSON.parse(response.text || "{}");
@@ -89,6 +96,7 @@ export class MathSolver {
     } catch (error) {
       console.error("Gemini failed, trying Puter fallback", error);
       if (typeof puter !== 'undefined' && puter.ai) {
+        // Puter fallback might not support image data easily, but let's keep it as is
         const response = await puter.ai.chat(`Solve this problem step-by-step: ${problem}. Return JSON with fields: text (string), steps (array of strings), assumedKnowledge (array of strings), practiceProblems (array of strings).`);
         const solution = JSON.parse(response || "{}");
         onChunk(solution);
