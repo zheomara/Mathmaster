@@ -1,5 +1,5 @@
 {
-  "name": "Mathmaster",
-  "description": "A simple mobile-friendly web app to generate Ed25519 signed license codes.",
+  "name": "Puter Fallback Test",
+  "description": "A test application to verify Puter.js integration and its local storage fallback mechanism.",
   "requestFramePermissions": ["camera"]
 }

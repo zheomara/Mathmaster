@@ -98,16 +98,26 @@ export default function SolverMode() {
     setGateStatus('analyzing');
     setMicroLessons([]);
     
-    // Start solving in background to reduce perceived latency
-    const solverPromise = startStream(text, base64Data, mimeType);
-    
-    const prereqs = await MathSolver.analyzePrerequisites(text, base64Data, mimeType);
-    if (prereqs.length > 0) {
-      setPrerequisites(prereqs);
-      setGateStatus('gate');
-    } else {
+    try {
+      const prereqs = await MathSolver.analyzePrerequisites(text, base64Data, mimeType);
+      if (prereqs.length > 0) {
+        setPrerequisites(prereqs);
+        setGateStatus('gate');
+      } else {
+        setGateStatus('solving');
+        const result = await startStream(text, base64Data, mimeType);
+        if (result && result.practiceProblems) {
+          savePracticeProblems(result.practiceProblems);
+        }
+        GamificationService.recordProblemSolved();
+        window.dispatchEvent(new Event('license_check'));
+        setGateStatus('idle');
+      }
+    } catch (err) {
+      console.error("Error processing image:", err);
+      // Fallback: just try to solve it directly if analysis fails
       setGateStatus('solving');
-      const result = await solverPromise;
+      const result = await startStream(text, base64Data, mimeType);
       if (result && result.practiceProblems) {
         savePracticeProblems(result.practiceProblems);
       }
@@ -124,16 +134,25 @@ export default function SolverMode() {
     setGateStatus('analyzing');
     setMicroLessons([]);
     
-    // Start solving in background
-    const solverPromise = startStream(textInput);
-    
-    const prereqs = await MathSolver.analyzePrerequisites(textInput);
-    if (prereqs.length > 0) {
-      setPrerequisites(prereqs);
-      setGateStatus('gate');
-    } else {
+    try {
+      const prereqs = await MathSolver.analyzePrerequisites(textInput);
+      if (prereqs.length > 0) {
+        setPrerequisites(prereqs);
+        setGateStatus('gate');
+      } else {
+        setGateStatus('solving');
+        const result = await startStream(textInput);
+        if (result && result.practiceProblems) {
+          savePracticeProblems(result.practiceProblems);
+        }
+        GamificationService.recordProblemSolved();
+        window.dispatchEvent(new Event('license_check'));
+        setGateStatus('idle');
+      }
+    } catch (err) {
+      console.error("Error analyzing text:", err);
       setGateStatus('solving');
-      const result = await solverPromise;
+      const result = await startStream(textInput);
       if (result && result.practiceProblems) {
         savePracticeProblems(result.practiceProblems);
       }
@@ -344,6 +363,14 @@ export default function SolverMode() {
                     </li>
                   ))}
                 </ul>
+              </div>
+            </div>
+          )}
+
+          {(!solution.steps || solution.steps.length === 0) && solution.text && (
+            <div className="p-6 bg-white border-b border-gray-100">
+              <div className="text-gray-700 leading-relaxed">
+                <LazyMarkdown>{fixMathDelimiters(solution.text)}</LazyMarkdown>
               </div>
             </div>
           )}
